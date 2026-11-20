@@ -1,0 +1,13 @@
+# Home Assistant
+
+URL: https://{{ vars.HERMES_KB_HOST_2 }}
+
+## Entity-Gruppen
+- eg_ = Erdgeschoss
+- og_ = Obergeschoss
+- Pattern: light.{floor}_{room}_all
+
+## Regeln
+- ALLOW ACTIONS für Bulk-Operationen nötig
+- Friendly Names verwenden (keine Entity-IDs)
+- Nach Aktion immer prüfen mit ha_get_state

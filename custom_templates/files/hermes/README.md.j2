@@ -1,0 +1,22 @@
+# Hermes Knowledge Base
+
+Automatisch deployte Wissensbasis für den Hermes Agent.
+
+## Aufbau
+```
+custom_templates/files/hermes/
+├── README.md.j2
+├── .env.example.j2
+├── honcho.json.j2
+└── knowledge/
+    ├── infrastructure.md.j2
+    ├── iac-controller.md.j2
+    ├── lyndrix.md.j2
+    └── home-assistant.md.j2
+```
+
+## Deployment
+Dieses Verzeichnis wird via CI bei jedem Deployment auf docker-gpu
+nach /export/docker/aac-openweb-ui/hermes/ synchronisiert.
+
+**Stand: Juni 2026**

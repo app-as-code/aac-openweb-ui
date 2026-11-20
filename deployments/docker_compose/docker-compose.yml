@@ -1,0 +1,198 @@
+services:
+  # --- Main Application Service ---
+  aac-openweb-ui:
+    image: "ghcr.io/open-webui/open-webui:v0.12.5"
+    container_name: "aac-openweb-ui"
+    hostname: "chat"
+    restart: "always"
+
+
+    environment:
+      SERVICE_IMAGE_TAG: "v0.12.5"
+      SERVICE_DOMAIN_NAME: "example.com"
+      OLLAMA_GPU_DRIVER: "nvidia"
+      CUSTOM_NAME: "Feser-GPT"
+      SERVICE_NAME_LOWERCASE: "aac-openweb-ui"
+      WEBUI_URL: "https://chat.example.com"
+      WEBUI_SECRET_KEY: "${WEBUI_SECRET_KEY:?set WEBUI_SECRET_KEY in .env (see .env.example)}"
+      PUID: "1000"
+      PGID: "1000"
+      SERVICE_NAME: "aac-openweb-ui"
+      OLLAMA_DOCKER_TAG: "latest"
+      OLLAMA_BASE_URL: "https://chat.example.com"
+      WEBUI_NAME: "Feser-GPT"
+      SERVICE_HOSTNAME: "aac-openweb-ui"
+      TZ: "Europe/Berlin"
+      PORT: "8789"
+      TOOLS_FUNCTION_CALLING_ENABLED: "true"
+      OPEN_TERMINAL_URL: "https://chat.example.com"
+      OPENAI_API_BASE_URL: "https://chat.example.com"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:?set OPENAI_API_KEY in .env (see .env.example)}"
+      OAUTH_CLIENT_ID: "${OAUTH_CLIENT_ID:?set OAUTH_CLIENT_ID in .env (see .env.example)}"
+      OAUTH_CLIENT_SECRET: "${OAUTH_CLIENT_SECRET:?set OAUTH_CLIENT_SECRET in .env (see .env.example)}"
+      OAUTH_AUTO_REDIRECT: "true"
+      OAUTH_PROVIDER_NAME: "authentik"
+      OPENID_PROVIDER_URL: "https://chat.example.com"
+      OPENID_REDIRECT_URI: "${OPENID_REDIRECT_URI:?set OPENID_REDIRECT_URI in .env (see .env.example)}"
+      ENABLE_OAUTH_SIGNUP: "true"
+      ENABLE_LOGIN_FORM: "false"
+      OAUTH_MERGE_ACCOUNTS_BY_EMAIL: "true"
+      OAUTH_SCOPES: "openid email profile"
+      ENABLE_OAUTH_PERSISTENT_CONFIG: "false"
+
+    ports:
+      - "8789:8789/tcp"
+
+    volumes:
+      - "/export/docker/aac-openweb-ui/data:/app/backend/data"
+
+    networks:
+      - exposed
+      - interconnect
+      - secured
+      - stack_internal
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.aac-openweb-ui.rule: "Host(`chat.example.com`)"
+      traefik.http.routers.aac-openweb-ui.entrypoints: "websecure"
+      traefik.http.routers.aac-openweb-ui.tls: "true"
+      traefik.http.routers.aac-openweb-ui.tls.certresolver: "ionos"
+      traefik.docker.network: "services-secured"
+      traefik.http.services.aac-openweb-ui.loadbalancer.server.port: "8789"
+      traefik.http.services.aac-openweb-ui.loadbalancer.server.scheme: "http"
+      auto-dns.createWildcard.aac-openweb-ui: "false"
+      auto-dns.customDNS.aac-openweb-ui: "true"
+      auto-dns.customDOMAIN.aac-openweb-ui: "example.com"
+      auto-dns.customHost.aac-openweb-ui: "chat"
+      homepage.group: "Kommunikation"
+      homepage.name: "GPT"
+      homepage.href: "https://chat.example.com"
+      homepage.icon: "/icons/icons8-chat-100.png"
+      homepage.description: "Web-Frontend für Ollama"
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8789/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+
+    extra_hosts:
+    - aac-openweb-ui-ollama:host-gateway
+    depends_on:
+      aac-openweb-ui-fish-speech:
+        condition: service_started
+      aac-openweb-ui-ollama:
+        condition: service_healthy
+
+
+  # --- Service Dependencies (Sidecars) ---
+  aac-openweb-ui-fish-speech:
+    image: "fishaudio/fish-speech:v1.5.1"
+    container_name: "aac-openweb-ui-fish-speech"
+    restart: "always"
+    
+    command:
+      - "python3"
+      - "-m"
+      - "tools.api_server"
+      - "--listen"
+      - "0.0.0.0:8080"
+
+
+    environment:
+      API_SERVER_NAME: "${API_SERVER_NAME:?set API_SERVER_NAME in .env (see .env.example)}"
+      API_SERVER_PORT: "8080"
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "Europe/Berlin"
+
+    ports:
+      - "8080:8080/tcp"
+
+    volumes:
+      - "/export/docker/aac-openweb-ui/fish_speech_checkpoints:/app/checkpoints"
+      - "/export/docker/aac-openweb-ui/fish_speech_references:/app/references"
+
+    networks:
+      - stack_internal
+
+
+
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: all
+            capabilities:
+            - gpu
+            - compute
+            - compat32
+            - graphics
+            - utility
+            - video
+            - display
+
+
+  aac-openweb-ui-ollama:
+    image: "ollama/ollama:0.40.13"
+    container_name: "aac-openweb-ui-ollama"
+    restart: "always"
+    
+
+    env_file:
+      - .env
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "Europe/Berlin"
+
+
+    volumes:
+      - "/export/docker/aac-openweb-ui/base:/root/.ollama"
+
+
+
+    healthcheck:
+      test: ["CMD", "ollama", "--version"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+    tty: true
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: all
+            capabilities:
+            - gpu
+            - compute
+            - compat32
+            - graphics
+            - utility
+            - video
+            - display
+
+
+
+networks:
+  secured:
+    name: "services-secured"
+    external: true
+  exposed:
+    name: "services-exposed"
+    external: true
+  interconnect:
+    name: "docker-default"
+    external: true
+  stack_internal:
+    name: "aac-openweb-ui_stack_internal"
+    driver: "bridge"
+

@@ -1,0 +1,240 @@
+service:
+  name: aac-openweb-ui
+  friendly_name: GPT
+  image_repo: ghcr.io/open-webui/open-webui
+  image_tag: v0.12.5
+  description: Web-Frontend für Ollama
+  icon: /icons/icons8-chat-100.png
+  category: Kommunikation
+  stage: prod
+  hostname: chat
+ports:
+- name: web
+  port: 8789
+  external_port: 8789
+  protocol: TCP
+config:
+  domain_name: example.com
+  generate_hostname: false
+  integrations:
+    homepage:
+      enabled: true
+    autodns:
+      enabled: true
+    traefik:
+      enabled: true
+      cert_resolver: ionos
+      entrypoint: websecure
+  schema_version: 2
+stage_overrides:
+  prod:
+    config:
+      generate_hostname: false
+    service:
+      hostname: chat
+volumes:
+  data:
+    description: Persistent data for Open WebUI
+  docker_sock:
+    type: bind
+    source: /var/run/docker.sock
+  fish_speech_checkpoints:
+    description: Model weights directory for Fish Speech TTS
+  fish_speech_references:
+    description: Reference audio files directory for Fish Speech TTS
+deployment_strategy:
+  main:
+    enabled: true
+    target_stage: prod
+  dev:
+    enabled: true
+    target_stage: dev
+  test:
+    enabled: false
+    target_stage: test
+  ansible-dev:
+    enabled: true
+    target_stage: dev
+  iac-dev:
+    enabled: true
+    target_stage: dev
+  template-dev:
+    enabled: true
+    target_stage: dev
+deployments:
+  docker_compose:
+    restart_policy: always
+    host_base_path: /export/docker
+    volumes:
+    - data:/app/backend/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -fs http://localhost:{{ vars.PORT }}/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    environment:
+      SERVICE_IMAGE_TAG: '{{ vars.SERVICE_IMAGE_TAG }}'
+      SERVICE_DOMAIN_NAME: '{{ vars.SERVICE_DOMAIN_NAME }}'
+      OLLAMA_GPU_DRIVER: '{{ vars.OLLAMA_GPU_DRIVER }}'
+      CUSTOM_NAME: '{{ vars.CUSTOM_NAME }}'
+      SERVICE_NAME_LOWERCASE: '{{ vars.SERVICE_NAME_LOWERCASE }}'
+      WEBUI_URL: '{{ vars.WEBUI_URL }}'
+      WEBUI_SECRET_KEY: '{{ secrets.WEBUI_SECRET_KEY }}'
+      PUID: '{{ vars.PUID }}'
+      PGID: '{{ vars.PGID }}'
+      SERVICE_NAME: '{{ vars.SERVICE_NAME }}'
+      OLLAMA_DOCKER_TAG: '{{ vars.OLLAMA_DOCKER_TAG }}'
+      OLLAMA_BASE_URL: '{{ vars.OLLAMA_BASE_URL }}'
+      WEBUI_NAME: '{{ vars.WEBUI_NAME }}'
+      SERVICE_HOSTNAME: '{{ vars.SERVICE_HOSTNAME }}'
+      TZ: '{{ vars.TZ }}'
+      PORT: '{{ vars.PORT }}'
+      TOOLS_FUNCTION_CALLING_ENABLED: '{{ vars.TOOLS_FUNCTION_CALLING_ENABLED }}'
+      OPEN_TERMINAL_URL: '{{ vars.OPEN_TERMINAL_URL }}'
+      OPENAI_API_BASE_URL: '{{ vars.OPENAI_API_BASE_URL }}'
+      OPENAI_API_KEY: '{{ secrets.OPENAI_API_KEY }}'
+      OAUTH_CLIENT_ID: '{{ vars.OAUTH_CLIENT_ID }}'
+      OAUTH_CLIENT_SECRET: '{{ secrets.OAUTH_CLIENT_SECRET }}'
+      OAUTH_AUTO_REDIRECT: '{{ vars.OAUTH_AUTO_REDIRECT }}'
+      OAUTH_PROVIDER_NAME: '{{ vars.OAUTH_PROVIDER_NAME }}'
+      OPENID_PROVIDER_URL: '{{ vars.OPENID_PROVIDER_URL }}'
+      OPENID_REDIRECT_URI: '{{ vars.OPENID_REDIRECT_URI }}'
+      ENABLE_OAUTH_SIGNUP: '{{ vars.ENABLE_OAUTH_SIGNUP }}'
+      ENABLE_LOGIN_FORM: '{{ vars.ENABLE_LOGIN_FORM }}'
+      OAUTH_MERGE_ACCOUNTS_BY_EMAIL: '{{ vars.OAUTH_MERGE_ACCOUNTS_BY_EMAIL }}'
+      OAUTH_SCOPES: '{{ vars.OAUTH_SCOPES }}'
+      ENABLE_OAUTH_PERSISTENT_CONFIG: '{{ vars.ENABLE_OAUTH_PERSISTENT_CONFIG }}'
+dependencies:
+  fish-speech:
+    name: aac-openweb-ui-fish-speech
+    image_repo: fishaudio/fish-speech
+    image_tag: v1.5.1
+    restart_policy: always
+    inherit_global_env: false
+    command:
+    - python3
+    - -m
+    - tools.api_server
+    - --listen
+    - 0.0.0.0:8080
+    ports:
+    - 8080:8080
+    volumes:
+      fish_speech_checkpoints:
+        target: /app/checkpoints
+        description: Model weights directory
+      fish_speech_references:
+        target: /app/references
+        description: Reference audio files directory
+    environment:
+      API_SERVER_NAME: '{{ vars.API_SERVER_NAME }}'
+      API_SERVER_PORT: '8080'
+      PUID: '{{ vars.PUID }}'
+      PGID: '{{ vars.PGID }}'
+      TZ: '{{ vars.TZ }}'
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: all
+            capabilities:
+            - gpu
+            - compute
+            - compat32
+            - graphics
+            - utility
+            - video
+            - display
+    networks_to_join:
+    - stack_internal
+  ollama:
+    name: aac-openweb-ui-ollama
+    image_repo: ollama/ollama
+    image_tag: 0.40.13
+    restart_policy: always
+    tty: true
+    network_mode: host
+    healthcheck:
+      test:
+      - CMD
+      - ollama
+      - --version
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: all
+            capabilities:
+            - gpu
+            - compute
+            - compat32
+            - graphics
+            - utility
+            - video
+            - display
+    volumes:
+      base:
+        target: /root/.ollama
+        description: Persistent storage for base
+    environment:
+      PUID: '{{ vars.PUID }}'
+      PGID: '{{ vars.PGID }}'
+      TZ: '{{ vars.TZ }}'
+vars:
+  HERMES_KB_ID_1: '0'
+  HERMES_KB_ID_2: '0'
+  HERMES_KB_HOST_1: host1.example.com
+  HERMES_KB_HOST_2: host2.example.com
+  HERMES_KB_HOST_3: host3.example.com
+  HERMES_KB_IP_1: 192.0.2.1
+  HERMES_KB_IP_2: 192.0.2.2
+  HERMES_KB_IP_3: 192.0.2.3
+  HERMES_KB_IP_4: 192.0.2.4
+  HERMES_KB_IP_5: 192.0.2.5
+  HERMES_KB_IP_6: 192.0.2.6
+  HERMES_KB_IP_7: 192.0.2.7
+  HERMES_KB_IP_8: 192.0.2.8
+  HERMES_KB_IP_9: 192.0.2.9
+  SERVICE_IMAGE_TAG: v0.12.5
+  SERVICE_DOMAIN_NAME: example.com
+  OLLAMA_GPU_DRIVER: nvidia
+  CUSTOM_NAME: Feser-GPT
+  SERVICE_NAME_LOWERCASE: aac-openweb-ui
+  WEBUI_URL: https://chat.example.com
+  PUID: '1000'
+  PGID: '1000'
+  SERVICE_NAME: aac-openweb-ui
+  OLLAMA_DOCKER_TAG: latest
+  OLLAMA_BASE_URL: https://chat.example.com
+  WEBUI_NAME: Feser-GPT
+  SERVICE_HOSTNAME: aac-openweb-ui
+  TZ: Europe/Berlin
+  PORT: '8789'
+  TOOLS_FUNCTION_CALLING_ENABLED: 'true'
+  OPEN_TERMINAL_URL: https://chat.example.com
+  OPENAI_API_BASE_URL: https://chat.example.com
+  OAUTH_CLIENT_ID: CHANGE_ME
+  OAUTH_AUTO_REDIRECT: 'true'
+  OAUTH_PROVIDER_NAME: authentik
+  OPENID_PROVIDER_URL: https://chat.example.com
+  OPENID_REDIRECT_URI: CHANGE_ME
+  ENABLE_OAUTH_SIGNUP: 'true'
+  ENABLE_LOGIN_FORM: 'false'
+  OAUTH_MERGE_ACCOUNTS_BY_EMAIL: 'true'
+  OAUTH_SCOPES: openid email profile
+  ENABLE_OAUTH_PERSISTENT_CONFIG: 'false'
+  API_SERVER_NAME: CHANGE_ME
+secrets:
+  WEBUI_SECRET_KEY: CHANGE_ME
+  OPENAI_API_KEY: CHANGE_ME
+  OAUTH_CLIENT_SECRET: CHANGE_ME

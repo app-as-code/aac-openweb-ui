@@ -1,0 +1,18 @@
+# iac-controller Repository
+
+Remote: https://{{ vars.HERMES_KB_HOST_3 }}/marvin1309/iac-controller
+Local: /opt/data/iac-controller/
+
+## Struktur
+```
+environments/
+  global/02_service_catalog.yml    # Alle AAC-Services
+  sites/hetzner/stages/prod/hosts.yml  # Host-Definitionen + Service-Zuweisungen
+```
+
+## Edit-Regeln
+| Datei | Editierbar? |
+|-------|-------------|
+| hosts.yml | Ja |
+| 02_service_catalog.yml | Ja |
+| 01_global_vars.yml | NEIN - ${VAR} broken |

@@ -1,0 +1,27 @@
+# Infrastructure Overview
+
+## Hosts & IPs
+
+### Docker Hosts
+| Hostname | IP | Purpose |
+|----------|-----|---------|
+| docker-gpu | {{ vars.HERMES_KB_IP_1 }} | Main app host |
+| docker-cerberus | {{ vars.HERMES_KB_IP_2 }} | Copilot-API |
+| docker-hydra | {{ vars.HERMES_KB_IP_3 }} | Reserve |
+| docker-auto | {{ vars.HERMES_KB_IP_4 }} | Clone target |
+| docker-atlas | {{ vars.HERMES_KB_IP_5 }} | DMZ services |
+| docker-dmz | {{ vars.HERMES_KB_IP_6 }} | DMZ services |
+
+### Network Hosts
+| Host | IP | Role |
+|------|-----|------|
+| netm-olympus | {{ vars.HERMES_KB_IP_7 }} | DHCP/DNS master |
+| netprov-titan | {{ vars.HERMES_KB_IP_8 }} | PDNS Recursor |
+| cicd-core | {{ vars.HERMES_KB_IP_9 }} | GitLab Runner |
+
+## SSH Access
+```
+ssh docker-gpu    → {{ vars.HERMES_KB_IP_1 }} (user: ansible-agent)
+ssh docker-atlas  → {{ vars.HERMES_KB_IP_5 }}
+```
+Config: /opt/data/.ssh/config
